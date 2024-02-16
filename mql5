@@ -1,0 +1,129 @@
+
+//+------------------------------------------------------------------+
+//|                                                     GOLD Way.mq5 |
+//|                     Copyright 2023, Forex Robot Easy Team        |
+//|                                             https://forexroboteasy.com |
+//+------------------------------------------------------------------+
+
+//--- Include necessary libraries and define constants
+#include <Trade\Trade.mqh>
+#include <Timeseries\Series.mqh>
+#include <News\News.mqh>
+#include <Trade\Virtual\VirtualTrade.mqh>
+#include <Trade\Virtual\VirtualTakeProfit.mqh>
+#include <Trade\Virtual\VirtualStopLoss.mqh>
+
+#define SYMBOL_XAUUSD 'XAUUSD'
+#define SYMBOL_XAUEUR 'XAUEUR'
+#define SYMBOL_XAUCHF 'XAUCHF'
+#define SYMBOL_XAUAUD 'XAUAUD'
+#define SYMBOL_XAUGBP 'XAUGBP'
+#define TIMEFRAME_H1 60
+#define TRADING_HOUR_START 19
+#define TRADING_HOUR_END 23
+
+//--- Global variables
+CNews newsFilter; // News filter instance
+CSeries volatilityFilter; // Market volatility filter instance
+CVirtualTakeProfit virtualTakeProfit; // Virtual take profit instance
+CVirtualStopLoss virtualStopLoss; // Virtual stop loss instance
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   //--- Initialize news filter
+   if(!newsFilter.Initialize())
+   {
+      Print('Failed to initialize news filter');
+      return INIT_FAILED;
+   }
+   
+   //--- Initialize market volatility filter
+   if(!volatilityFilter.Initialize())
+   {
+      Print('Failed to initialize volatility filter');
+      return INIT_FAILED;
+   }
+   
+   //--- Initialize virtual take profit
+   if(!virtualTakeProfit.Initialize())
+   {
+      Print('Failed to initialize virtual take profit');
+      return INIT_FAILED;
+   }
+   
+   //--- Initialize virtual stop loss
+   if(!virtualStopLoss.Initialize())
+   {
+      Print('Failed to initialize virtual stop loss');
+      return INIT_FAILED;
+   }
+   
+   //--- Set trading hours
+   if(!Trade.SetMarketOpenTime(SYMBOL_XAUUSD, TRADING_HOUR_START, TRADING_HOUR_END))
+   {
+      Print('Failed to set trading hours');
+      return INIT_FAILED;
+   }
+   
+   return INIT_SUCCEEDED;
+}
+
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   //--- Deinitialize news filter
+   newsFilter.Deinitialize();
+   
+   //--- Deinitialize market volatility filter
+   volatilityFilter.Deinitialize();
+   
+   //--- Deinitialize virtual take profit
+   virtualTakeProfit.Deinitialize();
+   
+   //--- Deinitialize virtual stop loss
+   virtualStopLoss.Deinitialize();
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   //--- Check if it's within trading hours
+   if(!Trade.IsMarketOpen(SYMBOL_XAUUSD))
+      return;
+   
+   //--- Check news filter for market entry
+   if(newsFilter.Check() != NEWS_FILTER_ALLOW_TRADE)
+      return;
+   
+   //--- Check market volatility filter for market entry
+   if(volatilityFilter.Check() != VOLATILITY_FILTER_ALLOW_TRADE)
+      return;
+   
+   //--- Place buy/sell market order
+   CVirtualTrade virtualTrade;
+   if(virtualTrade.Buy(SYMBOL_XAUUSD))
+   {
+      //--- Set virtual take profit and stop loss
+      virtualTakeProfit.Set(virtualTrade.OrderTicket(), 100); // Set take profit to 100 pips
+      virtualStopLoss.Set(virtualTrade.OrderTicket(), 50); // Set stop loss to 50 pips
+      
+      //--- Track virtual profit
+      double virtualProfit = virtualTrade.Profit(virtualTrade.OrderTicket());
+      Print('Virtual profit for order ', virtualTrade.OrderTicket(), ': ', virtualProfit);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Expert start function                                            |
+//+------------------------------------------------------------------+
+void OnStart()
+{
+   //--- Do nothing
+}
